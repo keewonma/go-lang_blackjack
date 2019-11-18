@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+//Hand slice
 type Hand []deck.Card
 
 func (h Hand) String() string {
@@ -16,10 +17,12 @@ func (h Hand) String() string {
 	return strings.Join(strs, ", ")
 }
 
+//DealerString - Hides Dealers Second Card
 func (h Hand) DealerString() string {
 	return h[0].String() + ", **HIDDEN**"
 }
 
+//Score - Calculates Score
 func (h Hand) Score() int {
 	minScore := h.MinScore()
 	if minScore > 11 {
@@ -34,6 +37,7 @@ func (h Hand) Score() int {
 	return minScore
 }
 
+//MinScore - Calculate minimum score with ace = 1 and kings, queens, jacks = 10
 func (h Hand) MinScore() int {
 	score := 0
 	for _, c := range h {
@@ -49,14 +53,15 @@ func min(a, b int) int {
 	return b
 }
 
+//Shuffle - Shuffle the Deck
 func Shuffle(gs GameState) GameState {
 	ret := clone(gs)
 	ret.Deck = deck.New(deck.Deck(3), deck.Shuffle)
 	return ret
 }
 
+//Deal - Deal 2 cards, with a max of 5 cards in hand
 func Deal(gs GameState) GameState {
-	//Deal 2 cards
 	ret := clone(gs)
 	ret.Player = make(Hand, 0, 5)
 	ret.Dealer = make(Hand, 0, 5)
@@ -71,6 +76,7 @@ func Deal(gs GameState) GameState {
 	return ret
 }
 
+//Hit - Deals a card to hand
 func Hit(gs GameState) GameState {
 	ret := clone(gs)
 	hand := ret.CurrentPlayer()
@@ -83,12 +89,14 @@ func Hit(gs GameState) GameState {
 	return ret
 }
 
+//Stand - moves to next state.
 func Stand(gs GameState) GameState {
 	ret := clone(gs)
 	ret.State++ //move to dealer turn
-	return gs
+	return ret
 }
 
+//EndHand - ends the hand and prints final score
 func EndHand(gs GameState) GameState {
 	ret := clone(gs)
 	//Calculate Score
@@ -98,24 +106,26 @@ func EndHand(gs GameState) GameState {
 	fmt.Println("Player: ", ret.Player, "\nScore:", pScore)
 	fmt.Printf("\n")
 	fmt.Println("Dealer: ", ret.Dealer, "\nScore:", dScore)
+	fmt.Println()
 	switch {
+
 	case pScore > 21:
 		//Player Over 21
-		fmt.Println("You busted")
+		fmt.Println("-----You busted!!!-----")
 	case dScore > 21:
 		//Dealer Over 21
-		fmt.Println("Dealer busted")
+		fmt.Println("-----Dealer busted!!!-----")
 	case pScore > dScore:
 		//Player wins by having a better score than the dealer
-		fmt.Println("You win!")
+		fmt.Println("-----You win!!!-----")
 	case dScore > pScore:
 		//Dealer wins by having a better score than the dealer
-		fmt.Println("You lose!")
+		fmt.Println("-----You lose!!!-----")
 	case dScore == pScore:
 		//Draw
-		fmt.Println("Push")
+		fmt.Println("-----Push-----")
 	}
-	fmt.Println()
+	fmt.Println("\n---NEW GAME---")
 	ret.Player = nil
 	ret.Dealer = nil
 	return ret
@@ -125,14 +135,17 @@ func main() {
 	//initial starting dealing pile with 3 decks and random shuffle
 	var gs GameState
 	gs = Shuffle(gs)
-	for i := 0; i < 10; i++ {
-		gs = Deal(gs)
 
+	for i := 0; i < 10; i++ {
+		//Deal two cards
+		gs = Deal(gs)
 		var input string
 		for gs.State == StatePlayerTurn {
-			fmt.Println("Player:", gs.Player)
+			pScore := gs.Player.Score()
+			fmt.Println("Player: ", gs.Player, "\nScore:", pScore)
 			fmt.Println("Dealer:", gs.Dealer.DealerString())
 			fmt.Println("What will you do? (h)it, (s)tand")
+			fmt.Printf("\n")
 			fmt.Scanf("%s\n", &input)
 			switch input {
 			case "h":
@@ -143,9 +156,6 @@ func main() {
 				fmt.Println("Invalid option:", input)
 			}
 		}
-		//Dealer AI
-		//If dealer score <= 16, dealer hits
-		//If dealer has a soft 17, dealer hits
 
 		for gs.State == StateDealerTurn {
 			if gs.Dealer.Score() <= 16 || (gs.Dealer.Score() == 17 && gs.Dealer.MinScore() != 17) {
@@ -154,18 +164,28 @@ func main() {
 				gs = Stand(gs)
 			}
 		}
+
 		gs = EndHand(gs)
 	}
 }
 
+func draw(cards []deck.Card) (deck.Card, []deck.Card) {
+	return cards[0], cards[1:]
+}
+
+//State - gamestate
 type State int8
 
 const (
+	//StatePlayerTurn - player's turn
 	StatePlayerTurn State = iota
+	//StateDealerTurn - dealer's turn
 	StateDealerTurn
+	//StateHandOver - hand is over
 	StateHandOver
 )
 
+//GameState - struct of gamestates
 type GameState struct {
 	Deck   []deck.Card
 	State  State
@@ -173,6 +193,7 @@ type GameState struct {
 	Dealer Hand
 }
 
+//CurrentPlayer - whose turn it is
 func (gs *GameState) CurrentPlayer() *Hand {
 	switch gs.State {
 	case StatePlayerTurn:
